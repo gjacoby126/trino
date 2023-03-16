@@ -527,7 +527,7 @@ public abstract class BaseConnectorTest
     @Test
     public void testDateYearOfEraPredicate()
     {
-        // Verify the predicate of '-1996-09-14' doesn't match '1997-09-14'. Both values return same formatted string when we use 'yyyy-MM-dd' in DateTimeFormatter
+        // Verify the predicate of '-1996-09-14' doesn't match '1997-09-14'. Both values return same format string when we use 'yyyy-MM-dd' in DateTimeFormatter
         assertQuery("SELECT orderdate FROM orders WHERE orderdate = DATE '1997-09-14'", "VALUES DATE '1997-09-14'");
         assertQueryReturnsEmptyResult("SELECT * FROM orders WHERE orderdate = DATE '-1996-09-14'");
     }
@@ -576,7 +576,7 @@ public abstract class BaseConnectorTest
                         "'99999-09-09'"))) {
             for (String date : List.of("2005-09-06", "2005-09-09", "2005-09-10")) {
                 for (String operator : List.of("=", "<=", "<", ">", ">=", "!=", "IS DISTINCT FROM", "IS NOT DISTINCT FROM")) {
-                    assertThat(query("SELECT a FROM %s WHERE CAST(a AS date) %s DATE '%s'".formatted(table.getName(), operator, date)))
+                    assertThat(query("SELECT a FROM %s WHERE CAST(a AS date) %s DATE '%s'".format(table.getName(), operator, date)))
                             .hasCorrectResultsRegardlessOfPushdown();
                 }
             }
@@ -587,10 +587,10 @@ public abstract class BaseConnectorTest
                 "varchar_as_date_pred",
                 "(a varchar)",
                 List.of("'2005-06-bad-date'", "'2005-09-10'"))) {
-            assertThatThrownBy(() -> query("SELECT a FROM %s WHERE CAST(a AS date) < DATE '2005-09-10'".formatted(table.getName())))
+            assertThatThrownBy(() -> query("SELECT a FROM %s WHERE CAST(a AS date) < DATE '2005-09-10'".format(table.getName())))
                     .hasMessage("Value cannot be cast to date: 2005-06-bad-date");
             verifyResultOrFailure(
-                    () -> query("SELECT a FROM %s WHERE CAST(a AS date) = DATE '2005-09-10'".formatted(table.getName())),
+                    () -> query("SELECT a FROM %s WHERE CAST(a AS date) = DATE '2005-09-10'".format(table.getName())),
                     queryAssert -> assertThat(queryAssert)
                             .skippingTypesCheck()
                             .matches("VALUES '2005-09-10'"),
@@ -598,7 +598,7 @@ public abstract class BaseConnectorTest
                             .hasMessage("Value cannot be cast to date: 2005-06-bad-date"));
             // This failure isn't guaranteed: a row may be filtered out on the connector side with a derived predicate on a varchar column.
             verifyResultOrFailure(
-                    () -> query("SELECT a FROM %s WHERE CAST(a AS date) != DATE '2005-9-1'".formatted(table.getName())),
+                    () -> query("SELECT a FROM %s WHERE CAST(a AS date) != DATE '2005-9-1'".format(table.getName())),
                     queryAssert -> assertThat(queryAssert)
                             .skippingTypesCheck()
                             .matches("VALUES '2005-09-10'"),
@@ -606,7 +606,7 @@ public abstract class BaseConnectorTest
                             .hasMessage("Value cannot be cast to date: 2005-06-bad-date"));
             // This failure isn't guaranteed: a row may be filtered out on the connector side with a derived predicate on a varchar column.
             verifyResultOrFailure(
-                    () -> query("SELECT a FROM %s WHERE CAST(a AS date) > DATE '2022-08-10'".formatted(table.getName())),
+                    () -> query("SELECT a FROM %s WHERE CAST(a AS date) > DATE '2022-08-10'".format(table.getName())),
                     queryAssert -> assertThat(queryAssert)
                             .skippingTypesCheck()
                             .returnsEmptyResult(),
@@ -619,7 +619,7 @@ public abstract class BaseConnectorTest
                 "(a varchar)",
                 List.of("'2005-09-10'"))) {
             // 2005-09-01, when written as 2005-09-1, is a prefix of an existing data point: 2005-09-10
-            assertThat(query("SELECT a FROM %s WHERE CAST(a AS date) != DATE '2005-09-01'".formatted(table.getName())))
+            assertThat(query("SELECT a FROM %s WHERE CAST(a AS date) != DATE '2005-09-01'".format(table.getName())))
                     .skippingTypesCheck()
                     .matches("VALUES '2005-09-10'");
         }
@@ -1251,7 +1251,7 @@ public abstract class BaseConnectorTest
         assertUpdate("DROP TABLE " + baseTable);
         assertQueryFails(
                 "TABLE " + viewName,
-                "line 1:1: Failed analyzing stored view '%1$s\\.%2$s\\.%3$s': line 3:3: Table '%1$s\\.%2$s\\.%4$s' does not exist".formatted(catalog, schema, viewName, baseTable));
+                "line 1:1: Failed analyzing stored view '%1$s\\.%2$s\\.%3$s': line 3:3: Table '%1$s\\.%2$s\\.%4$s' does not exist".format(catalog, schema, viewName, baseTable));
         assertUpdate("DROP MATERIALIZED VIEW " + viewName);
     }
 
@@ -2323,7 +2323,7 @@ public abstract class BaseConnectorTest
     {
         public SetColumnTypeSetup(String sourceColumnType, String sourceValueLiteral, String newColumnType)
         {
-            this(sourceColumnType, sourceValueLiteral, newColumnType, "CAST(CAST(%s AS %s) AS %s)".formatted(sourceValueLiteral, sourceColumnType, newColumnType));
+            this(sourceColumnType, sourceValueLiteral, newColumnType, "CAST(CAST(%s AS %s) AS %s)".format(sourceValueLiteral, sourceColumnType, newColumnType));
         }
 
         public SetColumnTypeSetup(String sourceColumnType, String sourceValueLiteral, String newColumnType, String newValueLiteral)
@@ -4951,7 +4951,7 @@ public abstract class BaseConnectorTest
                         MERGE INTO %s t USING (VALUES ('Carol', 9, 'Centreville')) AS s(customer, purchases, address)
                           ON (FALSE)
                             WHEN NOT MATCHED THEN INSERT (customer, purchases, address) VALUES(s.customer, s.purchases, s.address)
-                        """.formatted(targetTable),
+                        """.format(targetTable),
                 1);
 
         assertQuery("SELECT * FROM " + targetTable, "VALUES ('Aaron', 11, 'Antioch'), ('Bill', 7, 'Buena'), ('Carol', 9, 'Centreville')");
@@ -4961,7 +4961,7 @@ public abstract class BaseConnectorTest
                         MERGE INTO %s t USING (VALUES ('Dave', 22, 'Darbyshire')) AS s(customer, purchases, address)
                           ON (t.customer != t.customer)
                             WHEN NOT MATCHED THEN INSERT (customer, purchases, address) VALUES(s.customer, s.purchases, s.address)
-                        """.formatted(targetTable),
+                        """.format(targetTable),
                 1);
 
         assertQuery("SELECT * FROM " + targetTable, "VALUES ('Aaron', 11, 'Antioch'), ('Bill', 7, 'Buena'), ('Carol', 9, 'Centreville'), ('Dave', 22, 'Darbyshire')");
@@ -4972,7 +4972,7 @@ public abstract class BaseConnectorTest
                           ON (23 - (12 + 10) > 1)
                             WHEN MATCHED THEN UPDATE SET customer = concat(s.customer, '_fooled_you')
                             WHEN NOT MATCHED THEN INSERT (customer, purchases, address) VALUES(s.customer, s.purchases, s.address)
-                        """.formatted(targetTable),
+                        """.format(targetTable),
                 1);
 
         assertQuery("SELECT * FROM " + targetTable, "VALUES ('Aaron', 11, 'Antioch'), ('Bill', 7, 'Buena'), ('Carol', 9, 'Centreville'), ('Dave', 22, 'Darbyshire'), ('Ed', 7, 'Etherville')");
@@ -5290,7 +5290,7 @@ public abstract class BaseConnectorTest
                         MERGE INTO %s t USING (VALUES(1)) AS s(a) ON (t.a = s.a)
                             WHEN MATCHED THEN UPDATE
                                 SET c = 100, b = 42, a = 0
-                        """.formatted(targetTable),
+                        """.format(targetTable),
                 1);
         assertQuery("SELECT * FROM " + targetTable, "VALUES (0, 42, 100)");
 
@@ -5352,12 +5352,12 @@ public abstract class BaseConnectorTest
             if (actualCount != expectedCount) {
                 Metadata metadata = getDistributedQueryRunner().getMetadata();
                 FunctionManager functionManager = getDistributedQueryRunner().getFunctionManager();
-                String formattedPlan = textLogicalPlan(plan.getRoot(), plan.getTypes(), metadata, functionManager, StatsAndCosts.empty(), session, 0, false);
+                String formatPlan = textLogicalPlan(plan.getRoot(), plan.getTypes(), metadata, functionManager, StatsAndCosts.empty(), session, 0, false);
                 throw new AssertionError(format(
                         "Expected [\n%s\n] partial limit but found [\n%s\n] partial limit. Actual plan is [\n\n%s\n]",
                         expectedCount,
                         actualCount,
-                        formattedPlan));
+                        formatPlan));
             }
         };
     }

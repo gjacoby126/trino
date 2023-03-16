@@ -72,6 +72,7 @@
         <dep.protobuf.version>3.21.6</dep.protobuf.version>
         <dep.wire.version>3.2.2</dep.wire.version>
         <dep.kotlin.version>1.4.0</dep.kotlin.version>
+        <dep.kaldb.version>0.1-SNAPSHOT</dep.kaldb.version>
 
         <dep.docker.images.version>77</dep.docker.images.version>
 
@@ -151,6 +152,7 @@
         <module>plugin/trino-ignite</module>
         <module>plugin/trino-jmx</module>
         <module>plugin/trino-kafka</module>
+        <module>plugin/trino-kaldb</module>
         <module>plugin/trino-kinesis</module>
         <module>plugin/trino-kudu</module>
         <module>plugin/trino-local-file</module>
@@ -404,6 +406,12 @@
             <dependency>
                 <groupId>io.trino</groupId>
                 <artifactId>trino-jmx</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-kaldb</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -2040,7 +2048,15 @@
                                     <exclude>org.codehaus.plexus:plexus-utils</exclude>
                                     <exclude>com.google.guava:guava</exclude>
                                     <exclude>com.fasterxml.jackson.core:jackson-core</exclude>
+                                    <exclude>com.fasterxml.jackson.core:jackson-annotations</exclude>
+                                    <exclude>com.fasterxml.jackson.core:jackson-databind</exclude>
+                                    <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jsr310</exclude>
+                                    <exclude>com.fasterxml.jackson.datatype:jackson-datatype-jdk8</exclude>
                                     <exclude>com.google.j2objc:j2objc-annotations</exclude>
+                                    <exclude>org.apache.httpcomponents:httpcore</exclude>
+                                    <exclude>io.netty:netty-handler</exclude>
+                                    <exclude>org.hdrhistogram:HdrHistogram</exclude>
+                                    <exclude>io.micrometer:micrometer-core</exclude>
                                 </excludes>
                             </requireUpperBoundDeps>
                             <bannedDependencies>
@@ -2113,6 +2129,7 @@
                                 </resources>
                             </exception>
                         </exceptions>
+                        <failBuildInCaseOfEqualContentConflict>false</failBuildInCaseOfEqualContentConflict>
                     </configuration>
                 </plugin>
 

@@ -225,11 +225,11 @@ public abstract class AbstractTestQueryFramework
                                     BasicQueryInfo basicQueryInfo = queryManager.getQueryInfo(queryId);
                                     QueryInfo queryInfo = queryManager.getFullQueryInfo(queryId);
                                     String querySummary = createQueryDebuggingSummary(basicQueryInfo, queryInfo);
-                                    fail("Task is expected to be in done state, found: %s - TaskId: %s, QueryId: %s".formatted(taskState, taskId, queryId) + "\n\n" + querySummary);
+                                    fail("Task is expected to be in done state, found: %s - TaskId: %s, QueryId: %s".format(taskState.name(), taskId, queryId) + "\n\n" + querySummary);
                                 }
                                 catch (NoSuchElementException ignored) {
                                 }
-                                fail("Task is expected to be in done state, found: %s - TaskId: %s, QueryId: %s, Query: unknown".formatted(taskState, taskId, queryId));
+                                fail("Task is expected to be in done state, found: %s - TaskId: %s, QueryId: %s, Query: unknown".format(taskState.name(), taskId, queryId));
                             }
                         }
                     }

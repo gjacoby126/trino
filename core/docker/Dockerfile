@@ -43,7 +43,7 @@ COPY --chown=trino:trino trino-server-${TRINO_VERSION} /usr/lib/trino
 COPY --chown=trino:trino default/etc /etc/trino
 COPY --chown=trino:trino --from=builder /tmp/jvmkill/libjvmkill.so /usr/lib/trino/bin
 
-EXPOSE 8080
+EXPOSE 8090
 USER trino:trino
 CMD ["/usr/lib/trino/bin/run-trino"]
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s \

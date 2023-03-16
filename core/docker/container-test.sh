@@ -2,7 +2,8 @@
 
 function cleanup {
     if [[ -n ${CONTAINER_ID:-} ]]; then
-        docker rm -f "${CONTAINER_ID}"
+    #    docker rm -f "${CONTAINER_ID}"
+        echo "Not deleting the container"
     fi
 }
 

@@ -306,4 +306,10 @@
             <unpack />
         </artifact>
     </artifactSet>
+
+    <artifactSet to="plugin/kaldb">
+        <artifact id="${project.groupId}:trino-kaldb:zip:${project.version}">
+            <unpack />
+        </artifact>
+    </artifactSet>
 </runtime>
