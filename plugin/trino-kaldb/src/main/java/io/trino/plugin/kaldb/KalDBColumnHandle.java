@@ -15,6 +15,7 @@ package io.trino.plugin.kaldb;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.airlift.log.Logger;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.type.Type;
 
@@ -29,18 +30,24 @@ public class KalDBColumnHandle
     private final Type type;
     private final DecoderDescriptor decoderDescriptor;
     private final boolean supportsPredicates;
+    private final int ordinalPosition;
+
+    private static final Logger LOG = Logger.get(KalDBColumnHandle.class);
 
     @JsonCreator
     public KalDBColumnHandle(
             @JsonProperty("name") String name,
             @JsonProperty("type") Type type,
             @JsonProperty("decoderDescriptor") DecoderDescriptor decoderDescriptor,
-            @JsonProperty("supportsPredicates") boolean supportsPredicates)
+            @JsonProperty("supportsPredicates") boolean supportsPredicates,
+            @JsonProperty("ordinalPosition") int ordinalPosition)
     {
         this.name = requireNonNull(name, "name is null");
         this.type = requireNonNull(type, "type is null");
         this.decoderDescriptor = requireNonNull(decoderDescriptor, "decoderDescriptor is null");
         this.supportsPredicates = supportsPredicates;
+        this.ordinalPosition = ordinalPosition;
+        LOG.info("Column Handle %s, ordinal position %s", this.name, this.ordinalPosition);
     }
 
     @JsonProperty
@@ -67,10 +74,16 @@ public class KalDBColumnHandle
         return supportsPredicates;
     }
 
+    @JsonProperty
+    public int getOrdinalPosition()
+    {
+        return ordinalPosition;
+    }
+
     @Override
     public int hashCode()
     {
-        return Objects.hash(name, type, decoderDescriptor, supportsPredicates);
+        return Objects.hash(name, type, decoderDescriptor, supportsPredicates, ordinalPosition);
     }
 
     @Override
@@ -87,12 +100,13 @@ public class KalDBColumnHandle
         return this.supportsPredicates == other.supportsPredicates &&
                 Objects.equals(this.getName(), other.getName()) &&
                 Objects.equals(this.getType(), other.getType()) &&
-                Objects.equals(this.getDecoderDescriptor(), other.getDecoderDescriptor());
+                Objects.equals(this.getDecoderDescriptor(), other.getDecoderDescriptor()) &&
+                Objects.equals(this.getOrdinalPosition(), other.getOrdinalPosition());
     }
 
     @Override
     public String toString()
     {
-        return getName() + "::" + getType();
+        return getName() + "::" + getType() + "::" + getOrdinalPosition();
     }
 }

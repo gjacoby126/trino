@@ -18,6 +18,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.json.ObjectMapperProvider;
+import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.trino.plugin.base.expression.ConnectorExpressions;
 import io.trino.plugin.kaldb.client.IndexMetadata;
@@ -123,6 +124,7 @@ public class KalDBMetadata
     private final Type ipAddressType;
     private final KalDBClient client;
     private final String schemaName;
+    private static final Logger LOG = Logger.get(KalDBMetadata.class);
 
     @Inject
     public KalDBMetadata(TypeManager typeManager, KalDBClient client, KalDBConfig config)
@@ -221,13 +223,15 @@ public class KalDBMetadata
             result.put(builtinColumn.getName(), builtinColumn.getColumnHandle());
         }
 
-        for (IndexMetadata.Field field : fields) {
+        for (int k = 0; k < fields.size(); k++) {
+            IndexMetadata.Field field = fields.get(k);
             TypeAndDecoder converted = toTrino(field);
             result.put(field.getName(), new KalDBColumnHandle(
                     field.getName(),
                     converted.getType(),
                     converted.getDecoderDescriptor(),
-                    supportsPredicates(field.getType())));
+                    supportsPredicates(field.getType()),
+                    k));
         }
 
         return result.buildOrThrow();
@@ -331,7 +335,7 @@ public class KalDBMetadata
 
             // otherwise, skip -- row types must have at least 1 field
         }
-
+        LOG.warn("Returning null for type %s on field %s", type, field);
         return null;
     }
 
@@ -370,8 +374,6 @@ public class KalDBMetadata
     @Override
     public Map<String, ColumnHandle> getColumnHandles(ConnectorSession session, ConnectorTableHandle tableHandle)
     {
-        KalDBTableHandle table = (KalDBTableHandle) tableHandle;
-
         InternalTableMetadata tableMetadata = makeInternalTableMetadata(tableHandle);
         return tableMetadata.getColumnHandles();
     }

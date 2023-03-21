@@ -31,9 +31,9 @@ import static java.util.function.Function.identity;
 
 enum BuiltinColumns
 {
-    ID("_id", VARCHAR, new IdColumnDecoder.Descriptor(), true),
-    SOURCE("_source", VARCHAR, new SourceColumnDecoder.Descriptor(), false),
-    SCORE("_score", REAL, new ScoreColumnDecoder.Descriptor(), false);
+    ID("_id", VARCHAR, new IdColumnDecoder.Descriptor(), true, 0),
+    SOURCE("_source", VARCHAR, new SourceColumnDecoder.Descriptor(), false, 1),
+    SCORE("_score", REAL, new ScoreColumnDecoder.Descriptor(), false, 2);
 
     private static final Map<String, BuiltinColumns> COLUMNS_BY_NAME = stream(values())
             .collect(toImmutableMap(BuiltinColumns::getName, identity()));
@@ -42,13 +42,15 @@ enum BuiltinColumns
     private final Type type;
     private final DecoderDescriptor decoderDescriptor;
     private final boolean supportsPredicates;
+    private final int ordinalPosition;
 
-    BuiltinColumns(String name, Type type, DecoderDescriptor decoderDescriptor, boolean supportsPredicates)
+    BuiltinColumns(String name, Type type, DecoderDescriptor decoderDescriptor, boolean supportsPredicates, int ordinalPosition)
     {
         this.name = name;
         this.type = type;
         this.decoderDescriptor = decoderDescriptor;
         this.supportsPredicates = supportsPredicates;
+        this.ordinalPosition = ordinalPosition;
     }
 
     public static Optional<BuiltinColumns> of(String name)
@@ -86,6 +88,7 @@ enum BuiltinColumns
                 name,
                 type,
                 decoderDescriptor,
-                supportsPredicates);
+                supportsPredicates,
+                ordinalPosition);
     }
 }

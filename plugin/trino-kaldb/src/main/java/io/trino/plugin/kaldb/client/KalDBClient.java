@@ -90,6 +90,7 @@ public class KalDBClient
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapperProvider().get();
 
     private static final Pattern ADDRESS_PATTERN = Pattern.compile("((?<cname>[^/]+)/)?(?<ip>.+):(?<port>\\d+)");
+    public static final int KALDB_MAX_LIMIT = 2147483630;
 
     private final BackpressureRestHighLevelClient client;
 
@@ -215,14 +216,14 @@ public class KalDBClient
     private IndexMetadata getMetadataFromFixedSchema(String index)
     {
         List<IndexMetadata.Field> fields = new ArrayList<>(5);
-        fields.add(new IndexMetadata.Field(false, false, "id",
-                new IndexMetadata.PrimitiveType("keyword")));
+//        fields.add(new IndexMetadata.Field(false, false, "id",
+//                new IndexMetadata.PrimitiveType("keyword")));
         fields.add(new IndexMetadata.Field(false, false, "duration_ms",
                 new IndexMetadata.PrimitiveType("long")));
         fields.add(new IndexMetadata.Field(false, false, "trace_id",
                 new IndexMetadata.PrimitiveType("keyword")));
         fields.add(new IndexMetadata.Field(false, false, "@timestamp",
-                new IndexMetadata.PrimitiveType("keyword")));
+                new IndexMetadata.PrimitiveType("long")));
         fields.add(new IndexMetadata.Field(false, false, "mf_errorMessage",
                 new IndexMetadata.PrimitiveType("text")));
         IndexMetadata.ObjectType schemaTypes = new IndexMetadata.ObjectType(fields);
@@ -342,6 +343,9 @@ public class KalDBClient
         // Safe to cast it to int because scrollSize is int.
         if (limit != null && limit.isPresent()) {
             sourceBuilder.size(toIntExact(limit.getAsLong()));
+        }
+        else {
+            sourceBuilder.size(KALDB_MAX_LIMIT);
         }
         sort.ifPresent(sourceBuilder::sort);
 

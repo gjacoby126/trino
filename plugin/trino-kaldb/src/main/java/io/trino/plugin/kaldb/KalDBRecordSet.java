@@ -14,6 +14,7 @@
 package io.trino.plugin.kaldb;
 
 import com.google.common.collect.ImmutableList;
+import io.airlift.log.Logger;
 import io.trino.spi.connector.RecordCursor;
 import io.trino.spi.connector.RecordSet;
 import io.trino.spi.type.Type;
@@ -30,6 +31,7 @@ public class KalDBRecordSet
     private final KalDBTableHandle table;
     private final List<KalDBColumnHandle> columnHandles;
     private final List<Type> columnTypes;
+    private static final Logger LOG = Logger.get(KalDBRecordSet.class);
 
     public KalDBRecordSet(SearchResponse response, KalDBSplit split, KalDBTableHandle table,
             List<KalDBColumnHandle> columnHandles)
@@ -43,6 +45,7 @@ public class KalDBRecordSet
             types.add(column.getType());
         }
         this.columnTypes = types.build();
+        LOG.info("Column types for record set are: " + columnTypes);
     }
 
     @Override
@@ -54,6 +57,7 @@ public class KalDBRecordSet
     @Override
     public RecordCursor cursor()
     {
+        LOG.info("Creating a cursor based on response [" + response + "]");
         return new KalDBRecordCursor(response, table, columnHandles);
     }
 }

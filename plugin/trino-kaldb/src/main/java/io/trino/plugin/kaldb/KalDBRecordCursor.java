@@ -13,8 +13,11 @@
  */
 package io.trino.plugin.kaldb;
 
+import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
+import io.airlift.slice.Slices;
 import io.trino.plugin.kaldb.decoders.Decoder;
+import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.connector.RecordCursor;
 import io.trino.spi.type.BigintType;
 import io.trino.spi.type.BooleanType;
@@ -23,13 +26,19 @@ import io.trino.spi.type.Type;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
 
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.collect.ImmutableList.toImmutableList;
+import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.util.Objects.requireNonNull;
 
 public class KalDBRecordCursor
@@ -42,11 +51,15 @@ public class KalDBRecordCursor
 
     private final SearchResponse response;
     private SearchHit currentHit;
-    private int currentPos;
+    private int currentPos = -1;
     private boolean isClosed;
     private Map<String, Object> currentDocument;
-    private List<Object> fieldValues;
+    private List<List<Object>> fieldValueRows = new ArrayList<>();
     private List<Decoder> decoders;
+    private final int[] fieldToColumnIndex;
+
+    private final BlockBuilder[] columnBuilders;
+    private static final Logger LOG = Logger.get(KalDBRecordCursor.class);
 
     public KalDBRecordCursor(SearchResponse response, KalDBTableHandle table, List<KalDBColumnHandle> columnHandles)
     {
@@ -54,6 +67,27 @@ public class KalDBRecordCursor
         this.table = requireNonNull(table);
         this.columnHandles = requireNonNull(columnHandles);
         this.decoders = createDecoders(columnHandles);
+        fieldToColumnIndex = new int[columnHandles.size()];
+        for (int i = 0; i < columnHandles.size(); i++) {
+            KalDBColumnHandle columnHandle = columnHandles.get(i);
+            fieldToColumnIndex[i] = columnHandle.getOrdinalPosition();
+        }
+        LOG.info("columnHandles: " + columnHandles);
+        LOG.info("fieldToColumnIndex: " + Arrays.toString(fieldToColumnIndex));
+        columnBuilders = columnHandles.stream()
+                .map(KalDBColumnHandle::getType)
+                .map(type -> type.createBlockBuilder(null, 1))
+                .toArray(BlockBuilder[]::new);
+        for (SearchHit hit : response.getHits()) {
+            Map<String, Object> document = new LinkedHashMap<>(hit.getSourceAsMap());
+            fieldValueRows.add(document.values().stream().collect(Collectors.toUnmodifiableList()));
+            /*
+            for (int i = 0; i < decoders.size(); i++) {
+                String field = columnHandles.get(i).getName();
+                decoders.get(i).decode(hit, () -> getField(document, field), columnBuilders[i]);
+            }
+             */
+        }
     }
 
     @Override
@@ -78,13 +112,19 @@ public class KalDBRecordCursor
     @Override
     public boolean advanceNextPosition()
     {
-        currentPos++;
-        if (isClosed || currentPos >= response.getHits().totalHits) {
+        LOG.info("advanceNextPosition called");
+        // response.getHits().getTotalHits() refers to the sum of hits for the query
+        // across pages, and may be an approximation. To get the number of hits returned on _this_
+        // request, check the SearchHits array length directly
+        int numHits = response.getHits().getHits().length;
+        if (numHits == 0 || isClosed || currentPos + 1 >= numHits) {
+            LOG.info("advanceNextPosition returning false: " + isClosed + "/" + currentPos);
             return false;
         }
-        currentHit = response.getHits().getAt(currentPos);
-        currentDocument = new TreeMap<>(currentHit.getSourceAsMap());
-        fieldValues = currentDocument.values().stream().collect(Collectors.toUnmodifiableList());
+        currentPos++;
+
+        LOG.info("Advanced to hit [" + currentPos + "]");
+        LOG.info("Current field value row is: " + fieldValueRows.get(currentPos));
         return true;
     }
 
@@ -99,27 +139,37 @@ public class KalDBRecordCursor
     public boolean getBoolean(int field)
     {
         checkFieldType(field, BooleanType.BOOLEAN);
-        return Boolean.parseBoolean(fieldValues.get(field).toString());
+        return Boolean.parseBoolean(getField(field));
     }
 
     @Override
     public long getLong(int field)
     {
         checkFieldType(field, BigintType.BIGINT);
-        return Long.parseLong(fieldValues.get(field).toString());
+        //@timestamp is a special field in KalDB that we query like a long
+        //but get a response in a string-ified date
+        LOG.info("Parsing field " + field + " which is column handle " + columnHandles.get(field));
+        if (columnHandles.get(field).getName().equals("@timestamp")) {
+            return ZonedDateTime.parse(getField(field),
+                    DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.of("UTC"))).toInstant().toEpochMilli();
+        }
+        else {
+            return Long.parseLong(getField(field));
+        }
     }
 
     @Override
     public double getDouble(int field)
     {
         checkFieldType(field, DoubleType.DOUBLE);
-        return Double.parseDouble(fieldValues.get(field).toString());
+        return Double.parseDouble(getField(field));
     }
 
     @Override
     public Slice getSlice(int field)
     {
-        return null;
+        checkFieldType(field, createUnboundedVarcharType());
+        return Slices.utf8Slice(getField(field));
     }
 
     @Override
@@ -132,6 +182,17 @@ public class KalDBRecordCursor
     public boolean isNull(int field)
     {
         return false;
+    }
+
+    private String getField(int field)
+    {
+        return fieldValueRows.get(currentPos)
+                .get(fieldToColumnIndex[field]).toString();
+    }
+
+    private String getField(Map<String, Object> document, String field)
+    {
+        return document.get(field).toString();
     }
 
     @Override

@@ -98,6 +98,7 @@ public class RecordPageSource
                     }
                     else {
                         Type type = types.get(column);
+                        requireNonNull(type, "Null type for column " + column + 1 + " out of " + types.size());
                         Class<?> javaType = type.getJavaType();
                         if (javaType == boolean.class) {
                             type.writeBoolean(output, cursor.getBoolean(column));

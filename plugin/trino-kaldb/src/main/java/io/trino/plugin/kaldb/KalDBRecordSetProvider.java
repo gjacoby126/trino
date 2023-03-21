@@ -67,6 +67,7 @@ public class KalDBRecordSetProvider
         LOG.info("Columns to query are: " + fields);
         SearchResponse response = client.beginSearch(index, query, Optional.of(fields), docFields,
                 Optional.empty(), kalDBTable.getLimit());
+        LOG.info("Search response is: " + response);
         return new KalDBRecordSet(response, kalDBSplit, kalDBTable, kalDBColumnHandles);
     }
 }
