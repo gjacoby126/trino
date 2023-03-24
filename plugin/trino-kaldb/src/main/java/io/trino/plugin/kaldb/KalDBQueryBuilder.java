@@ -14,6 +14,7 @@
 package io.trino.plugin.kaldb;
 
 import com.google.common.collect.ImmutableList;
+import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
@@ -53,10 +54,13 @@ import static java.time.format.DateTimeFormatter.ISO_DATE_TIME;
 
 public final class KalDBQueryBuilder
 {
+    private static final Logger LOG = Logger.get(KalDBQueryBuilder.class);
+
     private KalDBQueryBuilder() {}
 
     public static QueryBuilder buildSearchQuery(TupleDomain<KalDBColumnHandle> constraint, Optional<String> query, Map<String, String> regexes)
     {
+        LOG.info("TupleDomain for KalDBQueryBuilder: %s", constraint);
         BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
         if (constraint.getDomains().isPresent()) {
             for (Map.Entry<KalDBColumnHandle, Domain> entry : constraint.getDomains().get().entrySet()) {
@@ -66,19 +70,24 @@ public final class KalDBQueryBuilder
                 checkArgument(!domain.isNone(), "Unexpected NONE domain for %s", column.getName());
                 if (!domain.isAll()) {
                     addPredicateToQueryBuilder(queryBuilder, column.getName(), domain, column.getType());
+                    LOG.info("Added domain predicate of %s for column %s", domain, column.getName());
                 }
             }
         }
-
+        LOG.info("Regexes to filter on: " + regexes);
         regexes.forEach((name, value) -> queryBuilder.filter(new BoolQueryBuilder().must(((new RegexpQueryBuilder(name, value))))));
 
         query.map(QueryStringQueryBuilder::new)
                 .ifPresent(queryBuilder::must);
 
         if (queryBuilder.hasClauses()) {
+            LOG.info("Created query builder: " + queryBuilder.toString(true));
             return queryBuilder;
         }
-        return new MatchAllQueryBuilder();
+        else {
+            LOG.info("Returning empty query builder because no clauses were found");
+            return new MatchAllQueryBuilder();
+        }
     }
 
     private static void addPredicateToQueryBuilder(BoolQueryBuilder queryBuilder, String columnName, Domain domain, Type type)

@@ -253,6 +253,7 @@ public class KalDBMetadata
                 case "double":
                 case "float":
                 case "keyword":
+                case "text":
                     return true;
             }
         }
@@ -461,6 +462,7 @@ public class KalDBMetadata
         KalDBTableHandle handle = (KalDBTableHandle) table;
 
         if (isPassthroughQuery(handle)) {
+            LOG.info("Can't pushdown passthrough query");
             // filter pushdown currently not supported for passthrough query
             return Optional.empty();
         }
@@ -472,6 +474,7 @@ public class KalDBMetadata
             KalDBColumnHandle column = (KalDBColumnHandle) entry.getKey();
 
             if (column.isSupportsPredicates()) {
+                LOG.info(column.getName() + " supports predicates");
                 supported.put(column, entry.getValue());
             }
             else {
@@ -503,14 +506,19 @@ public class KalDBMetadata
                     if (!newRegexes.containsKey(columnName) && pattern instanceof Slice) {
                         IndexMetadata metadata = client.getIndexMetadata(handle.getIndex());
                         if (metadata.getSchema()
-                                .getFields().stream()
-                                .anyMatch(field -> columnName.equals(field.getName()) && field.getType() instanceof PrimitiveType && "keyword".equals(((PrimitiveType) field.getType()).getName()))) {
+                                    .getFields().stream()
+                                    .anyMatch(field -> shouldPushDownField(columnName, field))) {
                             newRegexes.put(columnName, likeToRegexp(((Slice) pattern), escape));
                             continue;
+                        }
+                        else {
+                            LOG.info("Regex wasn't pushed down yet, pattern was a Slice, but we still didn't push down");
+                            LOG.info("Column name %s, pattern %s, fields %s", columnName, pattern, metadata.getSchema().getFields());
                         }
                     }
                 }
             }
+            LOG.info("Not pushing down " + expression);
             notHandledExpressions.add(expression);
         }
 
@@ -531,6 +539,14 @@ public class KalDBMetadata
         return Optional.of(new ConstraintApplicationResult<>(handle, TupleDomain.withColumnDomains(unsupported), newExpression, false));
     }
 
+    private static boolean shouldPushDownField(String columnName, IndexMetadata.Field field)
+    {
+        String fieldTypeName = ((PrimitiveType) field.getType()).getName();
+        return columnName.equals(field.getName())
+                && field.getType() instanceof PrimitiveType
+                && ("keyword".equals(fieldTypeName) || "text".equals(fieldTypeName));
+    }
+
     protected static boolean isSupportedLikeCall(Call call)
     {
         if (!LIKE_FUNCTION_NAME.equals(call.getFunctionName())) {
@@ -538,18 +554,23 @@ public class KalDBMetadata
         }
 
         List<ConnectorExpression> arguments = call.getArguments();
+        LOG.info("Checking to see if LIKE is supported. Arguments: " + arguments);
         if (arguments.size() < 2 || arguments.size() > 3) {
+            LOG.info("LIKE not supported -- wrong number of arguments!");
             return false;
         }
 
         if (!(arguments.get(0) instanceof Variable) || !(arguments.get(1) instanceof Constant)) {
+            LOG.info("LIKE not supported -- wrong type of arguments!"
+                    + arguments.get(0).getType() + "/" + arguments.get(1).getType());
             return false;
         }
 
         if (arguments.size() == 3) {
+            LOG.info("LIKE might be supported, if type is Constant:" + arguments.get(2).getType());
             return arguments.get(2) instanceof Constant;
         }
-
+        LOG.info("LIKE supported!");
         return true;
     }
 

@@ -34,12 +34,10 @@ import org.apache.http.HttpHost;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.impl.nio.reactor.IOReactorConfig;
-import org.apache.http.util.EntityUtils;
 import org.elasticsearch.action.search.MultiSearchRequest;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequest;
 import org.elasticsearch.action.search.SearchResponse;
-import org.elasticsearch.client.Response;
 import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
@@ -73,10 +71,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.concurrent.Threads.daemonThreadsNamed;
 import static io.trino.plugin.kaldb.KalDBErrorCode.KALDB_CONNECTION_ERROR;
-import static io.trino.plugin.kaldb.KalDBErrorCode.KALDB_INVALID_RESPONSE;
 import static io.trino.plugin.kaldb.KalDBErrorCode.KALDB_QUERY_FAILURE;
 import static java.lang.StrictMath.toIntExact;
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
@@ -90,7 +86,7 @@ public class KalDBClient
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapperProvider().get();
 
     private static final Pattern ADDRESS_PATTERN = Pattern.compile("((?<cname>[^/]+)/)?(?<ip>.+):(?<port>\\d+)");
-    public static final int KALDB_MAX_LIMIT = 2147483630;
+    public static final int KALDB_MAX_LIMIT = 10;
 
     private final BackpressureRestHighLevelClient client;
 
@@ -387,30 +383,6 @@ public class KalDBClient
     public TimeStat getBackpressureStats()
     {
         return backpressureStats;
-    }
-
-    private <T> T doRequest(String path, ResponseHandler<T> handler)
-    {
-        checkArgument(path.startsWith("/"), "path must be an absolute path");
-
-        Response response;
-        try {
-            response = client.getLowLevelClient()
-                    .performRequest("GET", path);
-        }
-        catch (IOException e) {
-            throw new TrinoException(KALDB_CONNECTION_ERROR, e);
-        }
-
-        String body;
-        try {
-            body = EntityUtils.toString(response.getEntity());
-        }
-        catch (IOException e) {
-            throw new TrinoException(KALDB_INVALID_RESPONSE, e);
-        }
-
-        return handler.process(body);
     }
 
     private static TrinoException propagate(ResponseException exception)
